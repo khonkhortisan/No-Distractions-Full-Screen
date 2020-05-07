@@ -174,19 +174,14 @@ def setupWeb():
 			mw.reviewer.bottom.web.eval('parent.focus()')
 		return reviewerFocus
 
-	if ndfs_inReview:
+	if mw.state == 'review' and ndfs_enabled:
+		ndfs_inReview = True
 		iFrame_domDone = False
 		iFrameDummy_domDone = False
 
 		AnkiWebView._setHtml = wrap(AnkiWebView._setHtml,setHtml_wrapper, "around")
 		AnkiWebView._evalWithCallback = wrap(AnkiWebView._evalWithCallback,evalWithCallback_wrapper, "around")
 		mw.reviewer.web.setFocus = reviewerSetFocus_wrapper(mw.reviewer.web.setFocus)
-	elif not ndfs_enabled: #disabling NDFS
-		AnkiWebView._setHtml = og_setHtml
-		AnkiWebView._evalWithCallback = og_evalWithCallback
-		mw.reviewer.web.setFocus = og_setFocus
-
-	if mw.state == 'review':
 		try:
 			reviewState = mw.reviewer.state
 			mw.reviewer._initWeb() #reviewer_wrapper is run
@@ -199,12 +194,28 @@ def setupWeb():
 					pass
 		except:
 			mw.reset() #failsafe
-	else:
-		mw.reset()
 
-	if ndfs_inReview:
 		updateBottom()
 		mw.reviewer.bottom.web.reload() #breaks currently running scripts in bottom
+
+	elif not ndfs_enabled: #disabling NDFS
+		AnkiWebView._setHtml = og_setHtml
+		AnkiWebView._evalWithCallback = og_evalWithCallback
+		mw.reviewer.web.setFocus = og_setFocus
+		if mw.state == 'review':
+			try:
+				reviewState = mw.reviewer.state
+				mw.reviewer._initWeb() #reviewer_wrapper is run
+				mw.reviewer._showQuestion()
+				if reviewState == 'answer':
+					try:
+						mw.reviewer._showAnswer() #breaks on fill in the blank cards
+					except:
+						pass
+			except:
+				mw.reset() #failsafe
+		else:
+			mw.reset()
 
 def updateBottom(*args):
 	if ndfs_inReview:
@@ -293,6 +304,7 @@ def toggle():
 			lockDrag.setVisible(True)
 
 			if config['last_toggle'] == 'full_screen': #Fullscreen mode
+				os.system("autohotkey.exe "+os.path.join(os.path.dirname(__file__), "duplicate.ahk"))
 				if isMac:
 					mw.showFullScreen()
 				if isWin and config['MS_Windows_fullscreen_compatibility_mode']: #Graphical issues on windows when using inbuilt method
@@ -357,6 +369,7 @@ def toggle():
 			if isFullscreen: #only change window state if was fullscreen
 				mw.setWindowState(og_window_state)
 				isFullscreen = False
+			os.system("autohotkey.exe "+os.path.join(os.path.dirname(__file__), "extend.ahk"))
 
 			mw.toolbar.web.show()
 			mw.mainLayout.addWidget(mw.reviewer.bottom.web)
